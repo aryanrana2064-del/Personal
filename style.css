@@ -1,0 +1,51 @@
+body {
+    font-family: Arial;
+    margin: 0;
+}
+
+.auth-body {
+    background: linear-gradient(135deg,#0f172a,#1e293b);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.auth-box {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    width: 300px;
+    text-align: center;
+}
+
+.auth-box input {
+    width: 90%;
+    padding: 10px;
+    margin: 10px;
+}
+
+.password-box {
+    position: relative;
+}
+
+.password-box span {
+    position: absolute;
+    right: 20px;
+    top: 15px;
+    cursor: pointer;
+}
+
+button {
+    padding: 10px;
+    margin: 10px;
+    width: 90%;
+    background: #3b82f6;
+    color: white;
+    border: none;
+}
+
+table {
+    width: 100%;
+    margin-top: 20px;
+}
