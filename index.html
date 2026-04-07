@@ -1,29 +1,134 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Login</title>
-<link rel="stylesheet" href="style.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <title>Work Tracker Simple</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            background: linear-gradient(135deg,#0f172a,#1e293b);
+            color: white;
+            text-align: center;
+        }
+
+        .card {
+            background: rgba(255,255,255,0.08);
+            padding: 15px;
+            border-radius: 12px;
+            margin: 10px;
+        }
+
+        input, button {
+            padding: 10px;
+            margin: 5px;
+            border-radius: 8px;
+            border: none;
+        }
+
+        button {
+            background: #3b82f6;
+            color: white;
+            cursor: pointer;
+        }
+
+        table {
+            width: 95%;
+            margin: auto;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 10px;
+            border: 1px solid #555;
+        }
+    </style>
 </head>
 
-<body class="auth-body">
+<body>
 
-<div class="auth-box">
-    <h2>Login</h2>
+<h1>📊 Work Tracker</h1>
 
-    <input type="text" id="loginEmail" placeholder="Email / Phone">
-
-    <div class="password-box">
-        <input type="password" id="loginPass" placeholder="Password">
-        <span onclick="togglePass('loginPass')">👁️</span>
-    </div>
-
-    <button onclick="login()">Login</button>
-    <button onclick="sendOTP()">Login with OTP</button>
-
-    <p>New user? <a href="signup.html">Signup</a></p>
+<div class="card">
+    <input type="number" id="salary" placeholder="₹ per work (default 200)">
 </div>
 
-<script src="app.js"></script>
+<button onclick="addWork()">+ Work</button>
+<button onclick="addLeave()">Leave</button>
+
+<h2 id="total">₹0</h2>
+
+<table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Time</th>
+<th>Status</th>
+<th>₹</th>
+</tr>
+</thead>
+<tbody id="data"></tbody>
+</table>
+
+<script>
+let data = [];
+
+function getSalary(){
+    let val = parseInt(document.getElementById("salary").value);
+    return val ? val : 200;
+}
+
+// ➕ WORK
+function addWork(){
+    let now = new Date();
+
+    let entry = {
+        date: now.toLocaleDateString(),
+        time: now.toLocaleTimeString(),
+        status: "Work",
+        earning: getSalary()
+    };
+
+    data.push(entry);
+    render();
+}
+
+// ❌ LEAVE
+function addLeave(){
+    let now = new Date();
+
+    let entry = {
+        date: now.toLocaleDateString(),
+        time: now.toLocaleTimeString(),
+        status: "Leave",
+        earning: 0
+    };
+
+    data.push(entry);
+    render();
+}
+
+// 📊 RENDER
+function render(){
+    let html = "";
+    let total = 0;
+
+    data.forEach(d=>{
+        total += d.earning;
+
+        html += `
+        <tr>
+            <td>${d.date}</td>
+            <td>${d.time}</td>
+            <td>${d.status}</td>
+            <td>₹${d.earning}</td>
+        </tr>`;
+    });
+
+    document.getElementById("data").innerHTML = html;
+    document.getElementById("total").innerText = "₹" + total;
+}
+</script>
+
 </body>
 </html>
