@@ -1,0 +1,60 @@
+body {
+    font-family: Arial;
+    background: linear-gradient(135deg,#0f172a,#1e293b);
+    color: white;
+    text-align: center;
+}
+
+.stats {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.card {
+    background: rgba(255,255,255,0.08);
+    padding: 15px;
+    border-radius: 15px;
+    min-width: 180px;
+    backdrop-filter: blur(10px);
+}
+
+input, select {
+    padding: 10px;
+    margin: 5px;
+    border-radius: 10px;
+    border: none;
+}
+
+button {
+    padding: 10px 15px;
+    margin: 5px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+}
+
+.add { background: #22c55e; }
+.leave { background: #f59e0b; }
+.export { background: #3b82f6; }
+.mail { background: #8b5cf6; }
+.download { background: #06b6d4; }
+.clear { background: #ef4444; }
+
+table {
+    width: 95%;
+    margin: 20px auto;
+    border-collapse: collapse;
+    background: rgba(255,255,255,0.05);
+}
+
+th, td {
+    border: 1px solid #555;
+    padding: 12px;
+}
+
+canvas {
+    max-width: 90%;
+    margin: auto;
+}
