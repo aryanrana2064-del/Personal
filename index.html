@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pro Work Tracker</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            background: #0f172a;
+            color: white;
+            text-align: center;
+        }
+
+        h1 {
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            font-size: 14px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        .add-btn {
+            background: #22c55e;
+        }
+
+        .add-btn:hover {
+            background: #4ade80;
+        }
+
+        .delete-btn {
+            background: #ef4444;
+        }
+
+        .delete-btn:hover {
+            background: #f87171;
+        }
+
+        table {
+            margin: 20px auto;
+            border-collapse: collapse;
+            width: 90%;
+        }
+
+        th, td {
+            border: 1px solid #555;
+            padding: 10px;
+        }
+
+        th {
+            background: #1e293b;
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>💼 My Pro Work Tracker</h1>
+
+<button class="add-btn" onclick="addWork()">+ Kaam Add Karo</button>
+
+<h2 id="total">Total: ₹0</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Earning</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody id="data"></tbody>
+</table>
+
+<script>
+let workData = JSON.parse(localStorage.getItem("workData")) || [];
+let total = 0;
+
+function renderData() {
+    let table = "";
+    total = 0;
+
+    workData.forEach((item, index) => {
+        total += item.earning;
+
+        table += `
+        <tr>
+            <td>${item.date}</td>
+            <td>${item.time}</td>
+            <td>₹${item.earning}</td>
+            <td><button class="delete-btn" onclick="deleteWork(${index})">Delete</button></td>
+        </tr>`;
+    });
+
+    document.getElementById("data").innerHTML = table;
+    document.getElementById("total").innerText = "Total: ₹" + total;
+
+    localStorage.setItem("workData", JSON.stringify(workData));
+}
+
+function addWork() {
+    let now = new Date();
+
+    let newWork = {
+        date: now.toLocaleDateString(),
+        time: now.toLocaleTimeString(),
+        earning: 200
+    };
+
+    workData.push(newWork);
+    renderData();
+}
+
+function deleteWork(index) {
+    workData.splice(index, 1);
+    renderData();
+}
+
+renderData();
+</script>
+
+</body>
+</html>
