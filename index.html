@@ -1,133 +1,205 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Work Tracker Simple</title>
+<title>W
+WorkLedger</title>
 
-    <style>
-        body {
-            font-family: Arial;
-            background: linear-gradient(135deg,#0f172a,#1e293b);
-            color: white;
-            text-align: center;
-        }
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-        .card {
-            background: rgba(255,255,255,0.08);
-            padding: 15px;
-            border-radius: 12px;
-            margin: 10px;
-        }
+<style>
+body {
+    font-family: Arial;
+    background: #0f172a;
+    color: white;
+    text-align: center;
+}
 
-        input, button {
-            padding: 10px;
-            margin: 5px;
-            border-radius: 8px;
-            border: none;
-        }
+.light {
+    background: #f1f5f9;
+    color: black;
+}
 
-        button {
-            background: #3b82f6;
-            color: white;
-            cursor: pointer;
-        }
+button, input, select {
+    padding: 8px;
+    margin: 5px;
+    border-radius: 6px;
+    border: none;
+}
 
-        table {
-            width: 95%;
-            margin: auto;
-            margin-top: 20px;
-            border-collapse: collapse;
-        }
+button {
+    background: #3b82f6;
+    color: white;
+}
 
-        th, td {
-            padding: 10px;
-            border: 1px solid #555;
-        }
-    </style>
+.card {
+    background: rgba(255,255,255,0.1);
+    margin: 10px;
+    padding: 10px;
+    border-radius: 10px;
+}
+
+table {
+    width: 95%;
+    margin: auto;
+    border-collapse: collapse;
+}
+
+td, th {
+    padding: 8px;
+    border: 1px solid #555;
+}
+</style>
 </head>
 
 <body>
 
-<h1>📊 Work Tracker</h1>
+<h1>📊 Work Tracker PRO+</h1>
+
+<button onclick="toggleTheme()">🌙/☀️</button>
 
 <div class="card">
-    <input type="number" id="salary" placeholder="₹ per work (default 200)">
+<input id="name" placeholder="Name">
+<input id="salary" type="number" placeholder="₹ (default 200)">
 </div>
 
-<button onclick="addWork()">+ Work</button>
-<button onclick="addLeave()">Leave</button>
+<div class="card">
+<button onclick="add('Work')">+ Work</button>
+<button onclick="add('Leave')">Leave</button>
+<button onclick="add('Bonus')">Bonus</button>
+<button onclick="add('Deduction')">Deduction</button>
+</div>
+
+<div class="card">
+<input id="search" placeholder="Search name..." oninput="render()">
+<select id="filter" onchange="render()">
+<option value="All">All</option>
+<option>Work</option>
+<option>Leave</option>
+<option>Bonus</option>
+<option>Deduction</option>
+</select>
+</div>
 
 <h2 id="total">₹0</h2>
+
+<canvas id="chart"></canvas>
 
 <table>
 <thead>
 <tr>
+<th>Name</th>
 <th>Date</th>
-<th>Time</th>
 <th>Status</th>
 <th>₹</th>
+<th>❌</th>
 </tr>
 </thead>
 <tbody id="data"></tbody>
 </table>
 
+<button onclick="reset()">Reset All</button>
+
 <script>
-let data = [];
+let data = JSON.parse(localStorage.getItem("data")) || [];
+let chart;
 
 function getSalary(){
-    let val = parseInt(document.getElementById("salary").value);
-    return val ? val : 200;
+    return parseInt(document.getElementById("salary").value) || 200;
 }
 
-// ➕ WORK
-function addWork(){
+function add(type){
     let now = new Date();
+    let amount = 0;
+
+    if(type==="Work") amount = getSalary();
+    if(type==="Bonus") amount = getSalary();
+    if(type==="Deduction") amount = -getSalary();
 
     let entry = {
+        name: document.getElementById("name").value || "User",
         date: now.toLocaleDateString(),
-        time: now.toLocaleTimeString(),
-        status: "Work",
-        earning: getSalary()
+        status: type,
+        amount: amount
     };
 
     data.push(entry);
+    save();
+}
+
+function save(){
+    localStorage.setItem("data", JSON.stringify(data));
     render();
 }
 
-// ❌ LEAVE
-function addLeave(){
-    let now = new Date();
-
-    let entry = {
-        date: now.toLocaleDateString(),
-        time: now.toLocaleTimeString(),
-        status: "Leave",
-        earning: 0
-    };
-
-    data.push(entry);
-    render();
+function del(i){
+    data.splice(i,1);
+    save();
 }
 
-// 📊 RENDER
+function reset(){
+    if(confirm("Clear all data?")){
+        data=[];
+        save();
+    }
+}
+
 function render(){
-    let html = "";
-    let total = 0;
+    let html="";
+    let total=0;
 
-    data.forEach(d=>{
-        total += d.earning;
+    let search = document.getElementById("search").value.toLowerCase();
+    let filter = document.getElementById("filter").value;
 
-        html += `
+    let filtered = data.filter(d=>{
+        return (filter==="All"||d.status===filter) &&
+               d.name.toLowerCase().includes(search);
+    });
+
+    filtered.forEach((d,i)=>{
+        total+=d.amount;
+
+        html+=`
         <tr>
-            <td>${d.date}</td>
-            <td>${d.time}</td>
-            <td>${d.status}</td>
-            <td>₹${d.earning}</td>
+        <td>${d.name}</td>
+        <td>${d.date}</td>
+        <td>${d.status}</td>
+        <td>₹${d.amount}</td>
+        <td><button onclick="del(${i})">X</button></td>
         </tr>`;
     });
 
-    document.getElementById("data").innerHTML = html;
-    document.getElementById("total").innerText = "₹" + total;
+    document.getElementById("data").innerHTML=html;
+    document.getElementById("total").innerText="₹"+total;
+
+    drawChart();
 }
+
+function drawChart(){
+    let daily={};
+
+    data.forEach(d=>{
+        daily[d.date]=(daily[d.date]||0)+d.amount;
+    });
+
+    let labels=Object.keys(daily);
+    let values=Object.values(daily);
+
+    if(chart) chart.destroy();
+
+    chart=new Chart(document.getElementById("chart"),{
+        type:"bar",
+        data:{
+            labels:labels,
+            datasets:[{label:"Daily ₹",data:values}]
+        }
+    });
+}
+
+function toggleTheme(){
+    document.body.classList.toggle("light");
+}
+
+render();
 </script>
 
 </body>
