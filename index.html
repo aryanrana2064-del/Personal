@@ -1,40 +1,209 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Pro Work Tracker</title>
+    <title>Ultimate Work Tracker</title>
 
     <style>
         body {
             font-family: Arial;
-            background: #0f172a;
+            background: linear-gradient(135deg,#0f172a,#1e293b);
             color: white;
             text-align: center;
         }
 
-        h1 {
-            margin-top: 20px;
+        input, select {
+            padding: 8px;
+            margin: 5px;
+            border-radius: 8px;
+            border: none;
         }
 
         button {
-            padding: 10px 15px;
+            padding: 10px;
             margin: 5px;
-            font-size: 14px;
-            border: none;
             border-radius: 10px;
+            border: none;
             cursor: pointer;
         }
 
-        .add-btn {
-            background: #22c55e;
+        .add { background: #22c55e; }
+        .leave { background: #f59e0b; }
+        .export { background: #3b82f6; }
+        .clear { background: #ef4444; }
+
+        table {
+            width: 95%;
+            margin: 20px auto;
+            border-collapse: collapse;
         }
 
-        .add-btn:hover {
-            background: #4ade80;
+        th, td {
+            border: 1px solid #555;
+            padding: 10px;
         }
 
-        .delete-btn {
-            background: #ef4444;
+        th { background: #1e293b; }
+    </style>
+</head>
+
+<body>
+
+<h1>🚀 Ultimate Team Work Tracker</h1>
+
+<input type="text" id="personName" placeholder="Add Person">
+<input type="number" id="salary" placeholder="₹ per work">
+
+<button onclick="addPerson()">➕ Add</button>
+
+<br>
+
+<input type="text" id="search" placeholder="Search person..." onkeyup="renderData()">
+
+<br>
+
+<select id="personSelect"></select>
+
+<br>
+
+<button class="add" onclick="addWork()">+ Work</button>
+<button class="leave" onclick="addLeave()">🌴 Leave</button>
+<button class="export" onclick="exportData()">📥 Export</button>
+<button class="clear" onclick="clearAll()">🗑 Clear</button>
+
+<h2 id="total">Total: ₹0</h2>
+
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Date</th>
+<th>Time</th>
+<th>Status</th>
+<th>₹</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody id="data"></tbody>
+</table>
+
+<script>
+let data = JSON.parse(localStorage.getItem("teamData")) || [];
+let persons = JSON.parse(localStorage.getItem("persons")) || [];
+
+function renderPersons() {
+    let options = "";
+    persons.forEach(p => {
+        options += `<option value="${p.name}">${p.name}</option>`;
+    });
+    document.getElementById("personSelect").innerHTML = options;
+}
+
+function addPerson() {
+    let name = document.getElementById("personName").value;
+    let salary = parseInt(document.getElementById("salary").value) || 200;
+
+    if(name) {
+        persons.push({name, salary});
+        localStorage.setItem("persons", JSON.stringify(persons));
+        renderPersons();
+    }
+}
+
+function getSalary(name) {
+    let p = persons.find(x => x.name === name);
+    return p ? p.salary : 200;
+}
+
+function renderData() {
+    let table = "";
+    let total = 0;
+    let selected = document.getElementById("personSelect").value;
+    let search = document.getElementById("search").value.toLowerCase();
+
+    data.forEach((item, index) => {
+        if((!selected || item.name === selected) && item.name.toLowerCase().includes(search)) {
+            total += item.earning;
+
+            table += `
+            <tr>
+                <td>${item.name}</td>
+                <td>${item.date}</td>
+                <td>${item.time}</td>
+                <td>${item.status}</td>
+                <td>₹${item.earning}</td>
+                <td><button onclick="deleteRow(${index})">Delete</button></td>
+            </tr>`;
         }
+    });
+
+    document.getElementById("data").innerHTML = table;
+    document.getElementById("total").innerText = "Total: ₹" + total;
+
+    localStorage.setItem("teamData", JSON.stringify(data));
+}
+
+function addWork() {
+    let now = new Date();
+    let person = document.getElementById("personSelect").value;
+
+    data.push({
+        name: person,
+        date: now.toLocaleDateString(),
+        time: now.toLocaleTimeString(),
+        status: "Worked",
+        earning: getSalary(person)
+    });
+
+    renderData();
+}
+
+function addLeave() {
+    let now = new Date();
+    let person = document.getElementById("personSelect").value;
+
+    data.push({
+        name: person,
+        date: now.toLocaleDateString(),
+        time: now.toLocaleTimeString(),
+        status: "Leave",
+        earning: 0
+    });
+
+    renderData();
+}
+
+function deleteRow(i) {
+    data.splice(i,1);
+    renderData();
+}
+
+function clearAll() {
+    if(confirm("Delete all data?")) {
+        data = [];
+        renderData();
+    }
+}
+
+function exportData() {
+    let csv = "Name,Date,Time,Status,Earning\n";
+
+    data.forEach(d => {
+        csv += `${d.name},${d.date},${d.time},${d.status},${d.earning}\n`;
+    });
+
+    let blob = new Blob([csv], { type: 'text/csv' });
+    let a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "work_data.csv";
+    a.click();
+}
+
+renderPersons();
+renderData();
+</script>
+
+</body>
+</html>        }
 
         .delete-btn:hover {
             background: #f87171;
