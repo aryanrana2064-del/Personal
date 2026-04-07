@@ -2,53 +2,25 @@
 <html>
 <head>
     <title>Ultimate Work Tracker</title>
-
-    <style>
-        body {
-            font-family: Arial;
-            background: linear-gradient(135deg,#0f172a,#1e293b);
-            color: white;
-            text-align: center;
-        }
-
-        input, select {
-            padding: 8px;
-            margin: 5px;
-            border-radius: 8px;
-            border: none;
-        }
-
-        button {
-            padding: 10px;
-            margin: 5px;
-            border-radius: 10px;
-            border: none;
-            cursor: pointer;
-        }
-
-        .add { background: #22c55e; }
-        .leave { background: #f59e0b; }
-        .export { background: #3b82f6; }
-        .clear { background: #ef4444; }
-
-        table {
-            width: 95%;
-            margin: 20px auto;
-            border-collapse: collapse;
-        }
-
-        th, td {
-            border: 1px solid #555;
-            padding: 10px;
-        }
-
-        th { background: #1e293b; }
-    </style>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
 
 <h1>🚀 Ultimate Team Work Tracker</h1>
+
+<div class="stats">
+    <div class="card">💰 Total Earnings: <span id="totalEarn">0</span></div>
+    <div class="card">📅 Total Days: <span id="totalDays">0</span></div>
+    <div class="card">🏆 Top Worker: <span id="topWorker">-</span></div>
+</div>
+
+<br>
+
+<input type="month" id="monthFilter" onchange="renderData()">
+
+<br>
 
 <input type="text" id="personName" placeholder="Add Person">
 <input type="number" id="salary" placeholder="₹ per work">
@@ -67,7 +39,9 @@
 
 <button class="add" onclick="addWork()">+ Work</button>
 <button class="leave" onclick="addLeave()">🌴 Leave</button>
-<button class="export" onclick="exportData()">📥 Export</button>
+<button class="export" onclick="exportData()">📥 CSV</button>
+<button class="mail" onclick="sendMail()">📧 Gmail</button>
+<button class="download" onclick="downloadChart()">📊 Download Chart</button>
 <button class="clear" onclick="clearAll()">🗑 Clear</button>
 
 <h2 id="total">Total: ₹0</h2>
@@ -86,9 +60,17 @@
 <tbody id="data"></tbody>
 </table>
 
+<h2>📊 Analytics</h2>
+
+<canvas id="dailyChart"></canvas>
+<br><br>
+<canvas id="personChart"></canvas>
+
 <script>
 let data = JSON.parse(localStorage.getItem("teamData")) || [];
 let persons = JSON.parse(localStorage.getItem("persons")) || [];
+
+let dailyChart, personChart;
 
 function renderPersons() {
     let options = "";
@@ -117,27 +99,37 @@ function getSalary(name) {
 function renderData() {
     let table = "";
     let total = 0;
+
     let selected = document.getElementById("personSelect").value;
     let search = document.getElementById("search").value.toLowerCase();
+    let month = document.getElementById("monthFilter").value;
 
-    data.forEach((item, index) => {
-        if((!selected || item.name === selected) && item.name.toLowerCase().includes(search)) {
-            total += item.earning;
+    let filteredData = data.filter(item => {
+        let matchPerson = (!selected || item.name === selected);
+        let matchSearch = item.name.toLowerCase().includes(search);
+        let matchMonth = !month || item.date.includes(month.split("-")[1]);
+        return matchPerson && matchSearch && matchMonth;
+    });
 
-            table += `
-            <tr>
-                <td>${item.name}</td>
-                <td>${item.date}</td>
-                <td>${item.time}</td>
-                <td>${item.status}</td>
-                <td>₹${item.earning}</td>
-                <td><button onclick="deleteRow(${index})">Delete</button></td>
-            </tr>`;
-        }
+    filteredData.forEach((item, index) => {
+        total += item.earning;
+
+        table += `
+        <tr>
+            <td>${item.name}</td>
+            <td>${item.date}</td>
+            <td>${item.time}</td>
+            <td>${item.status}</td>
+            <td>₹${item.earning}</td>
+            <td><button onclick="deleteRow(${index})">Delete</button></td>
+        </tr>`;
     });
 
     document.getElementById("data").innerHTML = table;
     document.getElementById("total").innerText = "Total: ₹" + total;
+
+    updateStats(filteredData);
+    renderCharts();
 
     localStorage.setItem("teamData", JSON.stringify(data));
 }
@@ -184,9 +176,18 @@ function clearAll() {
     }
 }
 
+// 📧 Gmail
+function sendMail() {
+    let body = "Work Report:\n\n";
+    data.forEach(d => {
+        body += `${d.name} | ${d.date} | ${d.time} | ${d.status} | ₹${d.earning}\n`;
+    });
+    window.location.href = `mailto:?subject=Work Report&body=${encodeURIComponent(body)}`;
+}
+
+// 📥 CSV
 function exportData() {
     let csv = "Name,Date,Time,Status,Earning\n";
-
     data.forEach(d => {
         csv += `${d.name},${d.date},${d.time},${d.status},${d.earning}\n`;
     });
@@ -196,6 +197,82 @@ function exportData() {
     a.href = URL.createObjectURL(blob);
     a.download = "work_data.csv";
     a.click();
+}
+
+// 📊 Charts
+function renderCharts() {
+    let daily = {};
+    let person = {};
+
+    data.forEach(d => {
+        if(!daily[d.date]) daily[d.date] = 0;
+        daily[d.date] += d.earning;
+
+        if(!person[d.name]) person[d.name] = 0;
+        person[d.name] += d.earning;
+    });
+
+    if(dailyChart) dailyChart.destroy();
+    if(personChart) personChart.destroy();
+
+    dailyChart = new Chart(document.getElementById("dailyChart"), {
+        type: "line",
+        data: {
+            labels: Object.keys(daily),
+            datasets: [{
+                label: "Daily Earnings",
+                data: Object.values(daily)
+            }]
+        }
+    });
+
+    personChart = new Chart(document.getElementById("personChart"), {
+        type: "bar",
+        data: {
+            labels: Object.keys(person),
+            datasets: [{
+                label: "Earnings per Person",
+                data: Object.values(person)
+            }]
+        }
+    });
+}
+
+// 📊 Stats
+function updateStats(filteredData) {
+    let total = 0;
+    let days = new Set();
+    let personTotal = {};
+
+    filteredData.forEach(d => {
+        total += d.earning;
+        days.add(d.date);
+
+        if(!personTotal[d.name]) personTotal[d.name] = 0;
+        personTotal[d.name] += d.earning;
+    });
+
+    let top = "-";
+    let max = 0;
+
+    for(let p in personTotal) {
+        if(personTotal[p] > max) {
+            max = personTotal[p];
+            top = p;
+        }
+    }
+
+    document.getElementById("totalEarn").innerText = "₹" + total;
+    document.getElementById("totalDays").innerText = days.size;
+    document.getElementById("topWorker").innerText = top;
+}
+
+// 📥 Download chart
+function downloadChart() {
+    let link = document.createElement("a");
+    link.download = "chart.png";
+    link.href = document.getElementById("dailyChart").toDataURL();
+    link.click();
 }
 
 renderPersons();
