@@ -1,50 +1,83 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Ultimate Work Tracker</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>Work Tracker PRO</title>
+
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+    <style>
+        body {
+            font-family: Arial;
+            background: linear-gradient(135deg,#0f172a,#1e293b);
+            color: white;
+            text-align: center;
+        }
+
+        .card {
+            background: rgba(255,255,255,0.08);
+            padding: 15px;
+            border-radius: 12px;
+            margin: 10px;
+        }
+
+        input, select, button {
+            padding: 10px;
+            margin: 5px;
+            border-radius: 8px;
+            border: none;
+        }
+
+        button {
+            background: #3b82f6;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #2563eb;
+        }
+
+        table {
+            width: 95%;
+            margin: auto;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 10px;
+            border: 1px solid #555;
+        }
+    </style>
 </head>
 
 <body>
 
-<h1>🚀 Ultimate Team Work Tracker</h1>
+<h1>☁️ Work Tracker PRO</h1>
 
-<div class="stats">
-    <div class="card">💰 Total Earnings: <span id="totalEarn">0</span></div>
-    <div class="card">📅 Total Days: <span id="totalDays">0</span></div>
-    <div class="card">🏆 Top Worker: <span id="topWorker">-</span></div>
+<div class="card">
+    <button onclick="signup()">Signup</button>
+    <button onclick="login()">Login</button>
+    <button onclick="logout()">Logout</button>
 </div>
 
-<br>
+<h3 id="userEmail"></h3>
 
-<input type="month" id="monthFilter" onchange="renderData()">
-
-<br>
-
-<input type="text" id="personName" placeholder="Add Person">
-<input type="number" id="salary" placeholder="₹ per work">
-
-<button onclick="addPerson()">➕ Add</button>
-
-<br>
-
-<input type="text" id="search" placeholder="Search person..." onkeyup="renderData()">
-
-<br>
+<div class="card">
+    <input type="text" id="personName" placeholder="Person Name">
+    <input type="number" id="salary" placeholder="₹ per work">
+    <button onclick="addPerson()">➕ Add Person</button>
+</div>
 
 <select id="personSelect"></select>
 
 <br>
 
-<button class="add" onclick="addWork()">+ Work</button>
-<button class="leave" onclick="addLeave()">🌴 Leave</button>
-<button class="export" onclick="exportData()">📥 CSV</button>
-<button class="mail" onclick="sendMail()">📧 Gmail</button>
-<button class="download" onclick="downloadChart()">📊 Download Chart</button>
-<button class="clear" onclick="clearAll()">🗑 Clear</button>
+<button onclick="addWork()">+ Work</button>
+<button onclick="addLeave()">Leave</button>
 
-<h2 id="total">Total: ₹0</h2>
+<h2 id="total">₹0</h2>
 
 <table>
 <thead>
@@ -54,229 +87,150 @@
 <th>Time</th>
 <th>Status</th>
 <th>₹</th>
-<th>Action</th>
 </tr>
 </thead>
 <tbody id="data"></tbody>
 </table>
 
-<h2>📊 Analytics</h2>
-
-<canvas id="dailyChart"></canvas>
-<br><br>
-<canvas id="personChart"></canvas>
-
 <script>
-let data = JSON.parse(localStorage.getItem("teamData")) || [];
-let persons = JSON.parse(localStorage.getItem("persons")) || [];
+// ✅ YOUR SUPABASE KEYS
+const SUPABASE_URL = "https://kmgnfgngtzxlxyjzboqg.supabase.co";
+const SUPABASE_KEY = "sb_publishable_1eqT_P96Ee8DNfZL4zduvg_Nwr11o1s";
 
-let dailyChart, personChart;
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-function renderPersons() {
-    let options = "";
-    persons.forEach(p => {
-        options += `<option value="${p.name}">${p.name}</option>`;
+let currentUser = null;
+let data = [];
+let persons = [];
+
+// 🔐 AUTH
+async function signup(){
+    let email = prompt("Enter Email");
+    let pass = prompt("Enter Password");
+
+    let { error } = await supabaseClient.auth.signUp({
+        email: email,
+        password: pass
     });
-    document.getElementById("personSelect").innerHTML = options;
+
+    alert(error ? error.message : "Signup Success");
 }
 
-function addPerson() {
+async function login(){
+    let email = prompt("Enter Email");
+    let pass = prompt("Enter Password");
+
+    let { data, error } = await supabaseClient.auth.signInWithPassword({
+        email: email,
+        password: pass
+    });
+
+    if(!error){
+        currentUser = data.user.email;
+        document.getElementById("userEmail").innerText = "User: " + currentUser;
+        loadData();
+    } else {
+        alert(error.message);
+    }
+}
+
+async function logout(){
+    await supabaseClient.auth.signOut();
+    location.reload();
+}
+
+// ☁️ LOAD DATA
+async function loadData(){
+    let { data: result } = await supabaseClient
+        .from("work")
+        .select("*")
+        .eq("user", currentUser);
+
+    data = result || [];
+    renderData();
+}
+
+// ➕ PERSON
+function addPerson(){
     let name = document.getElementById("personName").value;
     let salary = parseInt(document.getElementById("salary").value) || 200;
 
-    if(name) {
+    if(name){
         persons.push({name, salary});
-        localStorage.setItem("persons", JSON.stringify(persons));
         renderPersons();
     }
 }
 
-function getSalary(name) {
-    let p = persons.find(x => x.name === name);
+function renderPersons(){
+    let html = "";
+    persons.forEach(p=>{
+        html += `<option>${p.name}</option>`;
+    });
+    document.getElementById("personSelect").innerHTML = html;
+}
+
+function getSalary(name){
+    let p = persons.find(x=>x.name === name);
     return p ? p.salary : 200;
 }
 
-function renderData() {
-    let table = "";
-    let total = 0;
-
-    let selected = document.getElementById("personSelect").value;
-    let search = document.getElementById("search").value.toLowerCase();
-    let month = document.getElementById("monthFilter").value;
-
-    let filteredData = data.filter(item => {
-        let matchPerson = (!selected || item.name === selected);
-        let matchSearch = item.name.toLowerCase().includes(search);
-        let matchMonth = !month || item.date.includes(month.split("-")[1]);
-        return matchPerson && matchSearch && matchMonth;
-    });
-
-    filteredData.forEach((item, index) => {
-        total += item.earning;
-
-        table += `
-        <tr>
-            <td>${item.name}</td>
-            <td>${item.date}</td>
-            <td>${item.time}</td>
-            <td>${item.status}</td>
-            <td>₹${item.earning}</td>
-            <td><button onclick="deleteRow(${index})">Delete</button></td>
-        </tr>`;
-    });
-
-    document.getElementById("data").innerHTML = table;
-    document.getElementById("total").innerText = "Total: ₹" + total;
-
-    updateStats(filteredData);
-    renderCharts();
-
-    localStorage.setItem("teamData", JSON.stringify(data));
-}
-
-function addWork() {
+// ➕ WORK
+async function addWork(){
     let now = new Date();
-    let person = document.getElementById("personSelect").value;
+    let name = document.getElementById("personSelect").value;
 
-    data.push({
-        name: person,
+    let entry = {
+        user: currentUser,
+        name: name,
         date: now.toLocaleDateString(),
         time: now.toLocaleTimeString(),
-        status: "Worked",
-        earning: getSalary(person)
-    });
+        status: "Work",
+        earning: getSalary(name)
+    };
 
-    renderData();
+    await supabaseClient.from("work").insert([entry]);
+    loadData();
 }
 
-function addLeave() {
+// ➕ LEAVE
+async function addLeave(){
     let now = new Date();
-    let person = document.getElementById("personSelect").value;
+    let name = document.getElementById("personSelect").value;
 
-    data.push({
-        name: person,
+    let entry = {
+        user: currentUser,
+        name: name,
         date: now.toLocaleDateString(),
         time: now.toLocaleTimeString(),
         status: "Leave",
         earning: 0
-    });
+    };
 
-    renderData();
+    await supabaseClient.from("work").insert([entry]);
+    loadData();
 }
 
-function deleteRow(i) {
-    data.splice(i,1);
-    renderData();
-}
-
-function clearAll() {
-    if(confirm("Delete all data?")) {
-        data = [];
-        renderData();
-    }
-}
-
-// 📧 Gmail
-function sendMail() {
-    let body = "Work Report:\n\n";
-    data.forEach(d => {
-        body += `${d.name} | ${d.date} | ${d.time} | ${d.status} | ₹${d.earning}\n`;
-    });
-    window.location.href = `mailto:?subject=Work Report&body=${encodeURIComponent(body)}`;
-}
-
-// 📥 CSV
-function exportData() {
-    let csv = "Name,Date,Time,Status,Earning\n";
-    data.forEach(d => {
-        csv += `${d.name},${d.date},${d.time},${d.status},${d.earning}\n`;
-    });
-
-    let blob = new Blob([csv], { type: 'text/csv' });
-    let a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "work_data.csv";
-    a.click();
-}
-
-// 📊 Charts
-function renderCharts() {
-    let daily = {};
-    let person = {};
-
-    data.forEach(d => {
-        if(!daily[d.date]) daily[d.date] = 0;
-        daily[d.date] += d.earning;
-
-        if(!person[d.name]) person[d.name] = 0;
-        person[d.name] += d.earning;
-    });
-
-    if(dailyChart) dailyChart.destroy();
-    if(personChart) personChart.destroy();
-
-    dailyChart = new Chart(document.getElementById("dailyChart"), {
-        type: "line",
-        data: {
-            labels: Object.keys(daily),
-            datasets: [{
-                label: "Daily Earnings",
-                data: Object.values(daily)
-            }]
-        }
-    });
-
-    personChart = new Chart(document.getElementById("personChart"), {
-        type: "bar",
-        data: {
-            labels: Object.keys(person),
-            datasets: [{
-                label: "Earnings per Person",
-                data: Object.values(person)
-            }]
-        }
-    });
-}
-
-// 📊 Stats
-function updateStats(filteredData) {
+// 📊 RENDER
+function renderData(){
+    let html = "";
     let total = 0;
-    let days = new Set();
-    let personTotal = {};
 
-    filteredData.forEach(d => {
+    data.forEach(d=>{
         total += d.earning;
-        days.add(d.date);
 
-        if(!personTotal[d.name]) personTotal[d.name] = 0;
-        personTotal[d.name] += d.earning;
+        html += `
+        <tr>
+            <td>${d.name}</td>
+            <td>${d.date}</td>
+            <td>${d.time}</td>
+            <td>${d.status}</td>
+            <td>₹${d.earning}</td>
+        </tr>`;
     });
 
-    let top = "-";
-    let max = 0;
-
-    for(let p in personTotal) {
-        if(personTotal[p] > max) {
-            max = personTotal[p];
-            top = p;
-        }
-    }
-
-    document.getElementById("totalEarn").innerText = "₹" + total;
-    document.getElementById("totalDays").innerText = days.size;
-    document.getElementById("topWorker").innerText = top;
+    document.getElementById("data").innerHTML = html;
+    document.getElementById("total").innerText = "₹" + total;
 }
-
-// 📥 Download chart
-function downloadChart() {
-    let link = document.createElement("a");
-    link.download = "chart.png";
-    link.href = document.getElementById("dailyChart").toDataURL();
-    link.click();
-}
-
-renderPersons();
-renderData();
 </script>
 
 </body>
